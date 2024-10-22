@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Repository {
     #[serde(rename = "type")]
     pub repo_type: String,
@@ -113,6 +113,16 @@ pub(crate) fn write_npm_packages(
         .first()
         .unwrap()
         .file_stem;
+    let readme = if fs::exists("README.md").is_ok() {
+        PlatformFile::new("package/README.md", fs::read_to_string("README.md")?, None)
+    } else {
+        PlatformFile::new("package/README.md", "TODO", None)
+    };
+    let repo = Repository {
+        repo_type: "git".to_owned(),
+        url: project.spec.package.repo.clone(),
+        directory: None,
+    };
 
     let platform_pkgs: Vec<PackageJson> = npm_platform_directories
         .iter()
@@ -154,11 +164,7 @@ pub(crate) fn write_npm_packages(
                 author: author.clone(),
                 license: project.spec.package.license.clone(),
                 description: project.spec.package.description.clone(),
-                repository: Repository {
-                    repo_type: "git".to_owned(),
-                    url: "https://TODO".to_owned(),
-                    directory: None,
-                },
+                repository: repo.clone(),
                 main: Some("./index.cjs".to_owned()),
                 module: "./index.mjs".to_owned(),
                 types: Some("./index.d.ts".to_owned()),
@@ -186,7 +192,7 @@ pub(crate) fn write_npm_packages(
         .zip(&npm_platform_directories)
         .map(|(pkg, platform_dir)| {
             let mut files = vec![
-                PlatformFile::new("package/README.md", "TODO", None),
+                readme.clone(),
                 PlatformFile::new("package/package.json", serde_json::to_string(&pkg)?, None),
             ];
             for loadable_file in &platform_dir.loadable_files {
@@ -213,11 +219,7 @@ pub(crate) fn write_npm_packages(
         author: author.clone(),
         license: project.spec.package.license.clone(),
         description: project.spec.package.description.clone(),
-        repository: Repository {
-            repo_type: "git".to_owned(),
-            url: "https://TODO".to_owned(),
-            directory: None,
-        },
+        repository: repo.clone(),
         main: Some("./index.cjs".to_owned()),
         module: "./index.mjs".to_owned(),
         types: Some("./index.d.ts".to_owned()),
@@ -248,7 +250,7 @@ pub(crate) fn write_npm_packages(
         .collect::<Vec<(Os, Cpu)>>();
     let pkg_name = project.spec.package.name.clone();
     let top_pkg_targz_files = vec![
-        PlatformFile::new("package/README.md", "TODO", None),
+        readme.clone(),
         PlatformFile::new(
             "package/package.json",
             serde_json::to_string(&top_pkg)?,
@@ -273,11 +275,7 @@ pub(crate) fn write_npm_packages(
             author: author.clone(),
             license: project.spec.package.license.clone(),
             description: project.spec.package.description.clone(),
-            repository: Repository {
-                repo_type: "git".to_owned(),
-                url: "https://TODO".to_owned(),
-                directory: None,
-            },
+            repository: repo.clone(),
             main: None,
             module: "./sqlite3.mjs".to_owned(),
             types: None,
@@ -298,7 +296,7 @@ pub(crate) fn write_npm_packages(
             cpu: None,
         };
         let wasm_pkg_targz_files = vec![
-            PlatformFile::new("package/README.md", "TODO", None),
+            readme.clone(),
             PlatformFile::new(
                 "package/package.json",
                 serde_json::to_string(&wasm_pkg_json)?,
